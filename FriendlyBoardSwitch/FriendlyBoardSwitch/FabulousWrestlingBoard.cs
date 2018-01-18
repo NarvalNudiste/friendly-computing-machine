@@ -89,7 +89,10 @@ namespace FriendlyBoardSwitch {
                     if (ops != null) {
                         int[,] newEntry = new int[startingX, startingY];
                         if (!ops.Contains(newEntry)) {
-                            ops.Add(new int[startingX, startingY]);
+                            int[] op = new int[2];
+                            op[0] = startingX;
+                            op[1] = startingY;
+                            ops.Add(op);
                         }
                     }
                     firstPass = true;

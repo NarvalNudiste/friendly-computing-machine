@@ -7,8 +7,8 @@
     <ProjectGuid>{E0E79D64-9E46-4F44-8CED-D691A4812982}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OTHELLO12</RootNamespace>
-    <AssemblyName>OTHELLO12</AssemblyName>
+    <RootNamespace>OthelloIA1</RootNamespace>
+    <AssemblyName>OthelloIA1</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
