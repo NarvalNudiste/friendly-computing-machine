@@ -87,18 +87,26 @@ namespace FriendlyBoardSwitch {
                     if (stockCurrentLocations) {
                         ary.Add(new Tuple<int, int>(x, y));
                     }
-                    if (ops != null) {
-                        int[,] newEntry = new int[startingX, startingY];
-                        if (!ops.Contains(newEntry)) {
-                            int[] op = new int[2];
-                            op[0] = startingX;
-                            op[1] = startingY;
-                            ops.Add(op);
-                        }
-                    }
                     firstPass = true;
                 }
                 if (firstPass == true && game[x, y] == color) {
+                    if (ops != null){
+                        bool isPresent = false;
+                        for (int i = 0; i < ops.Count; i++) {
+                            int[] toTest = (int[])ops[i];
+                            if (startingX == toTest[0] && startingY == toTest[1]) {
+                                isPresent = true;
+                                break;
+                            }
+                            if (isPresent == false) {
+                                int[] op = new int[2];
+                                op[0] = startingX;
+                                op[1] = startingY;
+                                ops.Add(op);
+                            }
+                        }
+
+                    }
                     return true;
                 }
                 x += xInc;
