@@ -198,7 +198,7 @@ namespace FriendlyBoardSwitch {
             return newBoard;
         }
         public Tuple<int, int> GetNextMove(int[,] game, int level, bool whiteTurn) {
-            Tuple<Double, int, int> move = alphabeta(board, 5, 1, 0, whiteTurn ? 0 : 1);
+            Tuple<Double, int, int> move = alphabeta(board, 1, 1, 0, whiteTurn ? 0 : 1);
             //Console.WriteLine("ON FAIT UN TRUC LEL : " + move.Item2 + ";" + move.Item3);
             return new Tuple<int, int>(move.Item2, move.Item3);
         }
