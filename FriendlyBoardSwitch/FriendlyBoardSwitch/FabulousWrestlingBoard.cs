@@ -98,14 +98,13 @@ namespace FriendlyBoardSwitch {
                                 isPresent = true;
                                 break;
                             }
-                            if (isPresent == false) {
-                                int[] op = new int[2];
-                                op[0] = startingX;
-                                op[1] = startingY;
-                                ops.Add(op);
-                            }
                         }
-
+                        if (isPresent == false) {
+                            int[] op = new int[2];
+                            op[0] = startingX;
+                            op[1] = startingY;
+                            ops.Add(op);
+                        }
                     }
                     return true;
                 }
@@ -125,6 +124,11 @@ namespace FriendlyBoardSwitch {
                     }
                 }
             }
+            for (int i = 0; i < ops.Count; i++) {
+                int[] temp = (int[])ops[i];
+                //Console.WriteLine("op : " + temp[0] + ";" + temp[1]);
+            }
+            //Console.WriteLine("--------------");
             return ops;
         }
         public int GetBlackScore() {
