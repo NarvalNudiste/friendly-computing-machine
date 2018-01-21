@@ -198,21 +198,16 @@ namespace FriendlyBoardSwitch {
             return newBoard;
         }
         public Tuple<int, int> GetNextMove(int[,] game, int level, bool whiteTurn) {
-            Tuple<Double, int, int> move = alphabeta(board, 5, -1, 0, whiteTurn ? 0 : 1);
+            Tuple<Double, int, int> move = alphabeta(board, 5, 1, 0, whiteTurn ? 0 : 1);
             return new Tuple<int, int>(move.Item2, move.Item3);
         }
         public Tuple<Double, int, int> alphabeta(int[,] root, int depth, int minOrMax, Double parentValue, int player) {
             if (depth == 0 || Final(player, root)) {
-                //retourne -1 pour la position a jouer si on est au fond
-                //Console.WriteLine("Final");
                 return new Tuple<Double, int, int>(Score(root, player), -1, -1);
             }
-            //je crois pour test
             Double optVal = minOrMax*Double.MinValue;
             int[] optOp = { -1, -1 };
-            foreach (int[] op in Ops(root, player)) {
-                //System.Threading.Thread.Sleep(200);
-                //Console.WriteLine("depth : " + depth);                
+            foreach (int[] op in Ops(root, player)) {             
                 int[,] newNode = Apply(op[0], op[1], player == 0, root);
                 Double val = alphabeta(newNode, depth - 1, -minOrMax, optVal, player == 0 ? 1 : 0).Item1;
                 if (val * minOrMax > optVal * minOrMax) {
@@ -257,7 +252,7 @@ namespace FriendlyBoardSwitch {
                     if (board[i, j] != -1) {
                         for (k = 0; k < 8; k++) {
                             x = i + X1[k]; y = j + Y1[k];
-                            if (x >= 0 && x < 8 && y >= 0 && y < 8 && board[x, y] == -1) {
+                            if (!Out(x,y) && Empty(x,y)) {
                                 if (board[i, j] == my_color) my_front_tiles++;
                                 else opp_front_tiles++;
                                 break;
