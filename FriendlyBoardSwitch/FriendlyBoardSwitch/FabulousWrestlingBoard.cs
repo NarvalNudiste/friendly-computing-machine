@@ -29,6 +29,9 @@ namespace FriendlyBoardSwitch {
         private bool Empty(int x, int y) {
             return (board[x, y] == -1) ? true : false;
         }
+        private bool Empty(int x, int y, int[,] b) {
+            return (b[x, y] == -1) ? true : false;
+        }
         private int GetScore(int player) {
             int s = 0;
             foreach (int e in board) {
@@ -128,9 +131,7 @@ namespace FriendlyBoardSwitch {
             }
             for (int i = 0; i < ops.Count; i++) {
                 int[] temp = (int[])ops[i];
-                //Console.WriteLine("op : " + temp[0] + ";" + temp[1]);
             }
-            //Console.WriteLine("--------------");
             return ops;
         }
         public int GetBlackScore() {
@@ -198,18 +199,18 @@ namespace FriendlyBoardSwitch {
             return newBoard;
         }
         public Tuple<int, int> GetNextMove(int[,] game, int level, bool whiteTurn) {
-            Tuple<Double, int, int> move = alphabeta(board, 5, 1, 0, whiteTurn ? 0 : 1);
+            Tuple<Double, int, int> move = AlphaBeta(board, level, 1, 0, whiteTurn ? 0 : 1);
             return new Tuple<int, int>(move.Item2, move.Item3);
         }
-        public Tuple<Double, int, int> alphabeta(int[,] root, int depth, int minOrMax, Double parentValue, int player) {
+        public Tuple<Double, int, int> AlphaBeta(int[,] root, int depth, int minOrMax, Double parentValue, int player) {
             if (depth == 0 || Final(player, root)) {
-                return new Tuple<Double, int, int>(Score(root, player), -1, -1);
+                return new Tuple<Double, int, int>(Score(root, player == 0 ? 1 : 0), -1, -1);
             }
             Double optVal = minOrMax*Double.MinValue;
             int[] optOp = { -1, -1 };
             foreach (int[] op in Ops(root, player)) {             
                 int[,] newNode = Apply(op[0], op[1], player == 0, root);
-                Double val = alphabeta(newNode, depth - 1, -minOrMax, optVal, player == 0 ? 1 : 0).Item1;
+                Double val = AlphaBeta(newNode, depth - 1, -minOrMax, optVal, player == 0 ? 1 : 0).Item1;
                 if (val * minOrMax > optVal * minOrMax) {
                     optVal = val;
                     optOp = op;
@@ -221,16 +222,15 @@ namespace FriendlyBoardSwitch {
             return new Tuple<Double, int, int>(optVal, optOp[0], optOp[1]);
         }
         public Double Score(int[,] board, int player) {
-            //https://github.com/kartikkukreja/blog-codes/blob/master/src/Heuristic%20Function%20for%20Reversi%20(Othello).cpp
+            //Evaluation fonction comes from https://github.com/kartikkukreja/blog-codes/blob/master/src/Heuristic%20Function%20for%20Reversi%20(Othello).cpp
             int my_color = player;
             int opp_color = player == 0 ? 1 : 0;
-            int my_tiles = 0, opp_tiles = 0, i, j, k, my_front_tiles = 0, opp_front_tiles = 0, x, y;
             double p = 0, c = 0, l = 0, m = 0, f = 0, d = 0;
-
+            double m_weight = 100.0, l_weight = -12.5, c_weight = 25.0, pfd_weight = 100.0;
             int[] X1 = { -1, -1, 0, 1, 1, 1, 0, -1 };
             int[] Y1 = { 0, 1, 1, 1, 0, -1, -1, -1 };
 
-            int[,] V = {{20, -3, 11, 8, 8, 11, -3, 20},
+            int[,] weightedMatrix = {{20, -3, 11, 8, 8, 11, -3, 20},
                        {-3, -7, -4, 1, 1, -4, -7, -3},
                        { 11, -4, 2, 2, 2, 2, -4, 11},
                        { 8, 1, 2, -3, -3, 2, 1, 8},
@@ -239,103 +239,130 @@ namespace FriendlyBoardSwitch {
                        { -3, -7, -4, 1, 1, -4, -7, -3},
                        { 20, -3, 11, 8, 8, 11, -3, 20} };
 
-            // Piece difference, frontier disks and disk squares
-            for (i = 0; i < 8; i++) {
-                for (j = 0; j < 8; j++) {
-                    if (board[i, j] == my_color) {
-                        d += V[i, j];
-                        my_tiles++;
-                    } else if (board[i, j] == opp_color) {
-                        d -= V[i, j];
-                        opp_tiles++;
+            EvaluateDiffDiskSquares(board, my_color, opp_color, weightedMatrix, X1, Y1, pfd_weight, out p, out f, out d);
+            c = EvaluateCornerOccupancy(board, my_color, opp_color, c_weight);
+            l = EvaluateCornerCloseness(board, my_color ,opp_color, l_weight);
+            m = EvaluateMobility(board, my_color, opp_color, m_weight);
+            //return final weighted score
+            return (10 * p) + (801.724 * c) + (382.026 * l) + (78.922 * m) + (74.396 * f) + (10 * d);
+        }
+        private void EvaluateDiffDiskSquares(int[,] board, int color, int foe_color,int[,] weightedMatrix, int[] X1, int[] Y1, double pfd_weight, out double p, out double f, out double d) {
+            d = 0;
+            f = 0;
+            p = 0;
+            int x, y, player_tiles_count = 0, foe_tiles_count = 0, player_front_tiles = 0, foe_front_tiles = 0;
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    if (board[i, j] == color) {
+                        d += weightedMatrix[i, j];
+                        player_tiles_count++;
+                    } else if (board[i, j] == foe_color) {
+                        d -= weightedMatrix[i, j];
+                        foe_tiles_count++;
                     }
-                    if (board[i, j] != -1) {
-                        for (k = 0; k < 8; k++) {
+                    if (!Empty(i, j, board)) {
+                        for (int k = 0; k < 8; k++) {
                             x = i + X1[k]; y = j + Y1[k];
-                            if (!Out(x,y) && Empty(x,y)) {
-                                if (board[i, j] == my_color) my_front_tiles++;
-                                else opp_front_tiles++;
+                            if (!Out(x, y) && Empty(x, y)) {
+                                if (board[i, j] == color) player_front_tiles++;
+                                else foe_front_tiles++;
                                 break;
                             }
                         }
                     }
                 }
             }
-            if (my_tiles > opp_tiles)
-                p = (100.0 * my_tiles) / (my_tiles + opp_tiles);
-            else if (my_tiles < opp_tiles)
+            int total_tiles_count = player_tiles_count + foe_tiles_count;
+            int total_front_tiles_count = player_front_tiles + foe_front_tiles;
 
-                p = -(100.0 * opp_tiles) / (my_tiles + opp_tiles);
+            if (player_tiles_count > foe_tiles_count) {
+                p = (pfd_weight * player_tiles_count) / total_tiles_count;
+            }
+            else if (player_tiles_count < foe_tiles_count) {
+                p = -(pfd_weight * foe_tiles_count) / total_tiles_count;
+            }
             else p = 0;
-
-            if (my_front_tiles > opp_front_tiles)
-                f = -(100.0 * my_front_tiles) / (my_front_tiles + opp_front_tiles);
-            else if (my_front_tiles < opp_front_tiles)
-
-                f = (100.0 * opp_front_tiles) / (my_front_tiles + opp_front_tiles);
+            if (player_tiles_count > foe_tiles_count) {
+                f = -(pfd_weight * player_front_tiles) / (total_front_tiles_count);
+            }
+            else if (player_front_tiles < foe_front_tiles) {
+                f = (pfd_weight * foe_front_tiles) / (total_front_tiles_count);
+            }
             else f = 0;
-
-            // Corner occupancy
-            my_tiles = opp_tiles = 0;
-            if (board[0, 0] == my_color) my_tiles++;
-            else if (board[0, 0] == opp_color) opp_tiles++;
-            if (board[0, 7] == my_color) my_tiles++;
-            else if (board[0, 7] == opp_color) opp_tiles++;
-            if (board[7, 0] == my_color) my_tiles++;
-            else if (board[7, 0] == opp_color) opp_tiles++;
-            if (board[7, 7] == my_color) my_tiles++;
-            else if (board[7, 7] == opp_color) opp_tiles++;
-            c = 25 * (my_tiles - opp_tiles);
-
-            // Corner closeness
-            my_tiles = opp_tiles = 0;
-            if (board[0, 0] == -1) {
-                if (board[0, 1] == my_color) my_tiles++;
-                else if (board[0, 1] == opp_color) opp_tiles++;
-                if (board[1, 1] == my_color) my_tiles++;
-                else if (board[1, 1] == opp_color) opp_tiles++;
-                if (board[1, 0] == my_color) my_tiles++;
-                else if (board[1, 0] == opp_color) opp_tiles++;
+        }
+        private double EvaluateCornerOccupancy(int[,] board, int color, int foe_color, double weight) {
+            int player_tiles_count = 0;
+            int foe_tiles_count = 0;
+            Tuple<int, int>[] corners = GetCorners();
+            foreach(Tuple<int, int> t in corners){
+                if (board[t.Item1, t.Item2] == color) {
+                    player_tiles_count++;
+                }
+                else if (board[t.Item1, t.Item2] == foe_color) {
+                    foe_tiles_count++;
+                }
             }
-            if (board[0, 7] == -1) {
-                if (board[0, 6] == my_color) my_tiles++;
-                else if (board[0, 6] == opp_color) opp_tiles++;
-                if (board[1, 6] == my_color) my_tiles++;
-                else if (board[1, 6] == opp_color) opp_tiles++;
-                if (board[1, 7] == my_color) my_tiles++;
-                else if (board[1, 7] == opp_color) opp_tiles++;
+            return weight * (player_tiles_count - foe_tiles_count);
+        }
+        
+        private double EvaluateCornerCloseness(int[,] board, int color, int foe_color, double weight) {
+            int player_tiles_count = 0;
+            int foe_tiles_count = 0;
+            if (Empty(0, 0, board)) {
+                if (board[0, 1] == color) player_tiles_count++;
+                else if (board[0, 1] == foe_color) foe_tiles_count++;
+                if (board[1, 1] == color) player_tiles_count++;
+                else if (board[1, 1] == foe_color) foe_tiles_count++;
+                if (board[1, 0] == color) player_tiles_count++;
+                else if (board[1, 0] == foe_color) foe_tiles_count++;
             }
-            if (board[7, 0] == -1) {
-                if (board[7, 1] == my_color) my_tiles++;
-                else if (board[7, 1] == opp_color) opp_tiles++;
-                if (board[6, 1] == my_color) my_tiles++;
-                else if (board[6, 1] == opp_color) opp_tiles++;
-                if (board[6, 0] == my_color) my_tiles++;
-                else if (board[6, 0] == opp_color) opp_tiles++;
+            if (Empty(0, 7, board)) {
+                if (board[0, 6] == color) player_tiles_count++;
+                else if (board[0, 6] == foe_color) foe_tiles_count++;
+                if (board[1, 6] == color) player_tiles_count++;
+                else if (board[1, 6] == foe_color) foe_tiles_count++;
+                if (board[1, 7] == color) player_tiles_count++;
+                else if (board[1, 7] == foe_color) foe_tiles_count++;
             }
-            if (board[7, 7] == -1) {
-                if (board[6, 7] == my_color) my_tiles++;
-                else if (board[6, 7] == opp_color) opp_tiles++;
-                if (board[6, 6] == my_color) my_tiles++;
-                else if (board[6, 6] == opp_color) opp_tiles++;
-                if (board[7, 6] == my_color) my_tiles++;
-                else if (board[7, 6] == opp_color) opp_tiles++;
+            if (Empty(7, 0, board)) {
+                if (board[7, 1] == color) player_tiles_count++;
+                else if (board[7, 1] == foe_color) foe_tiles_count++;
+                if (board[6, 1] == color) player_tiles_count++;
+                else if (board[6, 1] == foe_color) foe_tiles_count++;
+                if (board[6, 0] == color) player_tiles_count++;
+                else if (board[6, 0] == foe_color) foe_tiles_count++;
             }
-            l = -12.5 * (my_tiles - opp_tiles);
+            if (Empty(7,7, board)) {
+                if (board[6, 7] == color) player_tiles_count++;
+                else if (board[6, 7] == foe_color) foe_tiles_count++;
+                if (board[6, 6] == color) player_tiles_count++;
+                else if (board[6, 6] == foe_color) foe_tiles_count++;
+                if (board[7, 6] == color) player_tiles_count++;
+                else if (board[7, 6] == foe_color) foe_tiles_count++;
+            }
+            return weight * (player_tiles_count - foe_tiles_count);
+        }
 
-            // Mobility
-            my_tiles = Ops(board, my_color).Count;
-            opp_tiles = Ops(board, opp_color).Count;
-            if (my_tiles > opp_tiles)
-                m = (100.0 * my_tiles) / (my_tiles + opp_tiles);
-            else if (my_tiles < opp_tiles)
-
-                m = -(100.0 * opp_tiles) / (my_tiles + opp_tiles);
-            else m = 0;
-
-            // final weighted score
-            double score = (10 * p) + (801.724 * c) + (382.026 * l) + (78.922 * m) + (74.396 * f) + (10 * d);
-            return score;
+        private Tuple<int, int>[] GetCorners() {
+            Tuple<int, int>[] corners = new Tuple<int, int>[4];
+            corners[0] = new Tuple<int, int>(0, 0); //Top left corner
+            corners[1] = new Tuple<int, int>(0, 7); //Top right corner
+            corners[2] = new Tuple<int, int>(7, 0); //Bottom left corner
+            corners[3] = new Tuple<int, int>(7, 7); //Bottom right corner
+            return corners;
+        }
+        private double EvaluateMobility(int[,] board, int color, int foe_color, double weight) {
+            int player_tiles_count = Ops(board, color).Count;
+            int foe_tiles_count = Ops(board, foe_color).Count;
+            int total_tiles_count = player_tiles_count + foe_tiles_count;
+            if (player_tiles_count > foe_tiles_count) {
+                return (weight * player_tiles_count) / (total_tiles_count);
+            }
+            else if (player_tiles_count < foe_tiles_count) {
+                return -(weight * foe_tiles_count) / (total_tiles_count);
+            } else {
+                return 0;
+            }
         }
         public int[,] GetBoard() {
             return board;
