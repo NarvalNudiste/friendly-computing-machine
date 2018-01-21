@@ -10,6 +10,7 @@ namespace FriendlyBoardSwitch {
         public FabulousWrestlingBoard() {
             Initialize();
         }
+        //initialize the board
         private void Initialize() {
             //init 2d array
             board = new int[boardSize, boardSize];
@@ -23,15 +24,21 @@ namespace FriendlyBoardSwitch {
                 }
             }
         }
+
+        //test if a move is outside the board
         private bool Out(int x, int y) {
             return (x < 0 || y < 0 || x >= boardSize || y >= boardSize) ? true : false;
         }
+
+        //test if a tile is empty
         private bool Empty(int x, int y) {
             return (board[x, y] == -1) ? true : false;
         }
         private bool Empty(int x, int y, int[,] b) {
             return (b[x, y] == -1) ? true : false;
         }
+
+        //get the score of the player
         private int GetScore(int player) {
             int s = 0;
             foreach (int e in board) {
@@ -116,6 +123,8 @@ namespace FriendlyBoardSwitch {
             }
             return false;
         }
+
+        //give all the possible moves for a player
         private ArrayList Ops(int[,] game, int player) {
             ArrayList ops = new ArrayList();
             for (int y = 0; y < this.boardSize; y++) {
@@ -134,15 +143,23 @@ namespace FriendlyBoardSwitch {
             }
             return ops;
         }
+
+        //get the score of the black pawns
         public int GetBlackScore() {
             return GetScore(1);
         }
+
+        //get the score of the white pawns
         public int GetWhiteScore() {
             return GetScore(0);
         }
+
+        //get the name of the IA
         public string GetName() {
             return name;
         }
+
+        //test if a move is legal or not
         public bool IsPlayable(int column, int line, bool isWhite) {
             if (Out(column, line) || !Empty(column, line))
                 return false;
@@ -158,6 +175,8 @@ namespace FriendlyBoardSwitch {
                 return false;
             }
         }
+
+        //play a move on the board
         public bool PlayMove(int column, int line, bool isWhite) {
             ArrayList ary = new ArrayList();
             int c = isWhite ? 0 : 1;
@@ -179,6 +198,8 @@ namespace FriendlyBoardSwitch {
                 return true;
             }
         }
+
+        //apply an operation (move) on a given board
         public int[,] Apply(int column, int line, bool isWhite, int[,] game) {
             int[,] newBoard;
             newBoard = (int[,])game.Clone();
@@ -198,10 +219,14 @@ namespace FriendlyBoardSwitch {
             ary = null;
             return newBoard;
         }
+
+        //get the next move to play
         public Tuple<int, int> GetNextMove(int[,] game, int level, bool whiteTurn) {
             Tuple<Double, int, int> move = AlphaBeta(board, level, 1, 0, whiteTurn ? 0 : 1);
             return new Tuple<int, int>(move.Item2, move.Item3);
         }
+
+        //our implementation of alphabeta
         public Tuple<Double, int, int> AlphaBeta(int[,] root, int depth, int minOrMax, Double parentValue, int player) {
             if (depth == 0 || Final(player, root)) {
                 return new Tuple<Double, int, int>(Score(root, player == 0 ? 1 : 0), -1, -1);
@@ -221,6 +246,8 @@ namespace FriendlyBoardSwitch {
             }
             return new Tuple<Double, int, int>(optVal, optOp[0], optOp[1]);
         }
+
+        //the evaluation function
         public Double Score(int[,] board, int player) {
             //Evaluation fonction comes from https://github.com/kartikkukreja/blog-codes/blob/master/src/Heuristic%20Function%20for%20Reversi%20(Othello).cpp
             int my_color = player;
@@ -230,6 +257,7 @@ namespace FriendlyBoardSwitch {
             int[] X1 = { -1, -1, 0, 1, 1, 1, 0, -1 };
             int[] Y1 = { 0, 1, 1, 1, 0, -1, -1, -1 };
 
+            //a matrice wich give the score for each tile
             int[,] weightedMatrix = {{20, -3, 11, 8, 8, 11, -3, 20},
                        {-3, -7, -4, 1, 1, -4, -7, -3},
                        { 11, -4, 2, 2, 2, 2, -4, 11},
@@ -246,6 +274,8 @@ namespace FriendlyBoardSwitch {
             //return final weighted score
             return (10 * p) + (801.724 * c) + (382.026 * l) + (78.922 * m) + (74.396 * f) + (10 * d);
         }
+
+
         private void EvaluateDiffDiskSquares(int[,] board, int color, int foe_color,int[,] weightedMatrix, int[] X1, int[] Y1, double pfd_weight, out double p, out double f, out double d) {
             d = 0;
             f = 0;
@@ -290,6 +320,8 @@ namespace FriendlyBoardSwitch {
             }
             else f = 0;
         }
+
+        //evaluate if the corner are occupate or not
         private double EvaluateCornerOccupancy(int[,] board, int color, int foe_color, double weight) {
             int player_tiles_count = 0;
             int foe_tiles_count = 0;
@@ -305,6 +337,7 @@ namespace FriendlyBoardSwitch {
             return weight * (player_tiles_count - foe_tiles_count);
         }
         
+        //evaluate the square around the corners
         private double EvaluateCornerCloseness(int[,] board, int color, int foe_color, double weight) {
             int player_tiles_count = 0;
             int foe_tiles_count = 0;
@@ -351,6 +384,8 @@ namespace FriendlyBoardSwitch {
             corners[3] = new Tuple<int, int>(7, 7); //Bottom right corner
             return corners;
         }
+
+        //evaluate the number of moves possibility for each player
         private double EvaluateMobility(int[,] board, int color, int foe_color, double weight) {
             int player_tiles_count = Ops(board, color).Count;
             int foe_tiles_count = Ops(board, foe_color).Count;
@@ -364,9 +399,13 @@ namespace FriendlyBoardSwitch {
                 return 0;
             }
         }
+
+        // get the board state
         public int[,] GetBoard() {
             return board;
         }
+
+        //test if a board state is a final state 
         public bool Final(int color, int[,] game) {
             if (isGameFinished(game)) {
                 return true;
@@ -385,6 +424,8 @@ namespace FriendlyBoardSwitch {
             }
             return true;
         }
+
+        //test if a game is finished
         public bool isGameFinished(int[,] game) {
             for (int y = 0; y < boardSize; y++) {
                 for (int x = 0; x < boardSize; x++) {
