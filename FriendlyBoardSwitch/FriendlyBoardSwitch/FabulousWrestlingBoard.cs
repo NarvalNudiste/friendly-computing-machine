@@ -2,7 +2,7 @@
 using System.Collections;
 using IPlayable;
 using System.Threading;
-namespace FriendlyBoardSwitch {
+namespace OthelloIAG12 {
     class FabulousWrestlingBoard : IPlayable.IPlayable {
         int[,] board;
         int boardSize = 8;
@@ -25,20 +25,21 @@ namespace FriendlyBoardSwitch {
             }
         }
 
-        //test if a move is outside the board
+        //Test if a move is outside of the board
         private bool Out(int x, int y) {
             return (x < 0 || y < 0 || x >= boardSize || y >= boardSize) ? true : false;
         }
 
-        //test if a tile is empty
+        //Test if a tile is empty
         private bool Empty(int x, int y) {
             return (board[x, y] == -1) ? true : false;
         }
+        //Overload of the Empty function 
         private bool Empty(int x, int y, int[,] b) {
             return (b[x, y] == -1) ? true : false;
         }
 
-        //get the score of the player
+        //Get the score of the player
         private int GetScore(int player) {
             int s = 0;
             foreach (int e in board) {
@@ -47,6 +48,7 @@ namespace FriendlyBoardSwitch {
             }
             return s;
         }
+        // Checks if a move is possible on the given direction
         private bool CheckLine(int x, int y, int direction, int color, bool stockCurrentLocation, ArrayList ary = null, int[,] game = null, ArrayList ops = null) {
             if (game == null) {
                 game = this.board;
@@ -81,6 +83,8 @@ namespace FriendlyBoardSwitch {
                     }
             }
         }
+        //Check the validity of a move : First, we search in a line for n adjacent tiles occupied by the opponent. 
+        //Then, we search for a tile occupied by one of our paw 
         private bool CheckLine(int startingX, int startingY, int x, int y, int xInc, int yInc, int color, bool stockCurrentLocations, ArrayList ary = null, int[,] game = null, ArrayList ops = null) {
             if (game == null) {
                 game = this.board;
@@ -199,7 +203,7 @@ namespace FriendlyBoardSwitch {
             }
         }
 
-        //apply an operation (move) on a given board
+        //apply an operation (move) on a given board and returns it new state
         public int[,] Apply(int column, int line, bool isWhite, int[,] game) {
             int[,] newBoard;
             newBoard = (int[,])game.Clone();
@@ -252,12 +256,12 @@ namespace FriendlyBoardSwitch {
             //Evaluation fonction comes from https://github.com/kartikkukreja/blog-codes/blob/master/src/Heuristic%20Function%20for%20Reversi%20(Othello).cpp
             int my_color = player;
             int opp_color = player == 0 ? 1 : 0;
-            double p = 0, c = 0, l = 0, m = 0, f = 0, d = 0;
+            double c, l, m;
             double m_weight = 100.0, l_weight = -12.5, c_weight = 25.0, pfd_weight = 100.0;
             int[] X1 = { -1, -1, 0, 1, 1, 1, 0, -1 };
             int[] Y1 = { 0, 1, 1, 1, 0, -1, -1, -1 };
 
-            //a matrice wich give the score for each tile
+            //a matrice wich give the weight for each tile
             int[,] weightedMatrix = {{20, -3, 11, 8, 8, 11, -3, 20},
                        {-3, -7, -4, 1, 1, -4, -7, -3},
                        { 11, -4, 2, 2, 2, 2, -4, 11},
@@ -267,7 +271,7 @@ namespace FriendlyBoardSwitch {
                        { -3, -7, -4, 1, 1, -4, -7, -3},
                        { 20, -3, 11, 8, 8, 11, -3, 20} };
 
-            EvaluateDiffDiskSquares(board, my_color, opp_color, weightedMatrix, X1, Y1, pfd_weight, out p, out f, out d);
+            EvaluateDiffDiskSquares(board, my_color, opp_color, weightedMatrix, X1, Y1, pfd_weight, out double p, out double f, out double d);
             c = EvaluateCornerOccupancy(board, my_color, opp_color, c_weight);
             l = EvaluateCornerCloseness(board, my_color ,opp_color, l_weight);
             m = EvaluateMobility(board, my_color, opp_color, m_weight);
@@ -275,7 +279,11 @@ namespace FriendlyBoardSwitch {
             return (10 * p) + (801.724 * c) + (382.026 * l) + (78.922 * m) + (74.396 * f) + (10 * d);
         }
 
-
+        /*
+         * First, evaluates the board by applying the weightedMatrix to the d variable.
+         * Then, evaluate the stability of a tile by evaluating nearby tiles.
+         * (The X1 and Y1 arrays are used to iterate on the adjacent tiles of a given index)
+         */
         private void EvaluateDiffDiskSquares(int[,] board, int color, int foe_color,int[,] weightedMatrix, int[] X1, int[] Y1, double pfd_weight, out double p, out double f, out double d) {
             d = 0;
             f = 0;
@@ -293,9 +301,12 @@ namespace FriendlyBoardSwitch {
                     if (!Empty(i, j, board)) {
                         for (int k = 0; k < 8; k++) {
                             x = i + X1[k]; y = j + Y1[k];
-                            if (!Out(x, y) && Empty(x, y)) {
-                                if (board[i, j] == color) player_front_tiles++;
-                                else foe_front_tiles++;
+                            if (!Out(x, y) && Empty(x, y, board)) {
+                                if (board[i, j] == color) {
+                                    player_front_tiles++;
+                                } else {
+                                    foe_front_tiles++;
+                                }
                                 break;
                             }
                         }
@@ -375,7 +386,7 @@ namespace FriendlyBoardSwitch {
             }
             return weight * (player_tiles_count - foe_tiles_count);
         }
-
+        //returns a tuple list with the corners coordinates: used by EvaluateCornerOccupancy
         private Tuple<int, int>[] GetCorners() {
             Tuple<int, int>[] corners = new Tuple<int, int>[4];
             corners[0] = new Tuple<int, int>(0, 0); //Top left corner
@@ -399,15 +410,13 @@ namespace FriendlyBoardSwitch {
                 return 0;
             }
         }
-
         // get the board state
         public int[,] GetBoard() {
             return board;
         }
-
         //test if a board state is a final state 
         public bool Final(int color, int[,] game) {
-            if (isGameFinished(game)) {
+            if (IsGameFinished(game)) {
                 return true;
             } else {
                 for (int y = 0; y < boardSize; y++) {
@@ -426,7 +435,7 @@ namespace FriendlyBoardSwitch {
         }
 
         //test if a game is finished
-        public bool isGameFinished(int[,] game) {
+        public bool IsGameFinished(int[,] game) {
             for (int y = 0; y < boardSize; y++) {
                 for (int x = 0; x < boardSize; x++) {
                     if (game[x, y] == -1) {
